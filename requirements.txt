@@ -1,0 +1,4 @@
+fastapi
+numpy
+scipy
+xgboost-cpu

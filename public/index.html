@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sleep Apnea Detection from Single-Lead ECG</title>
+<style>
+:root{--bg:#f4f5fb;--card:#fff;--fg:#14172e;--mut:#5d6384;--line:#e1e4f2;--ac:#4338ca;--ac2:#d97706;--bad:#e11d48;--ok:#059669;--onac:#fff;--sh:0 10px 28px rgba(50,60,140,.14);color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1020;--card:#151a32;--fg:#e8eaf8;--mut:#9aa0c4;--line:#272e52;--ac:#8b95ff;--ac2:#fbbf24;--bad:#ff6b8b;--ok:#34d399;--onac:#0d1020;--sh:0 10px 28px rgba(0,0,0,.45);color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0d1020;--card:#151a32;--fg:#e8eaf8;--mut:#9aa0c4;--line:#272e52;--ac:#8b95ff;--ac2:#fbbf24;--bad:#ff6b8b;--ok:#34d399;--onac:#0d1020;--sh:0 10px 28px rgba(0,0,0,.45);color-scheme:dark}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 64px);scroll-behavior:smooth}
+*,*:before,*:after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--card);z-index:11}
+nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:var(--card);border-bottom:1px solid var(--line);display:flex;gap:4px;align-items:center;padding:10px 20px;overflow-x:auto}
+nav b{margin-right:auto;white-space:nowrap;letter-spacing:.2px}
+nav a{color:var(--mut);text-decoration:none;padding:6px 12px;border-radius:8px;font-size:14px;white-space:nowrap}
+nav a:hover{background:var(--bg);color:var(--fg)}
+.wrap{max-width:1040px;margin:0 auto;padding:0 20px}
+.hero{margin-top:24px;padding:44px 32px 30px;border-radius:22px;border:1px solid var(--line);background:linear-gradient(135deg,color-mix(in srgb,var(--ac) 13%,var(--card)),var(--card) 65%)}
+.eyebrow{color:var(--ac);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:1.2px;margin:0 0 10px}
+h1{font-size:clamp(30px,5vw,46px);line-height:1.15;margin:0 0 14px;letter-spacing:-.5px}
+h2{font-size:26px;margin:0 0 6px;letter-spacing:-.3px}
+h3{font-size:16px;margin:0 0 6px}
+.lead{color:var(--mut);font-size:18px;max-width:700px;margin:0 0 28px}
+section{padding:52px 0 4px}
+.sub{color:var(--mut);margin:0 0 22px;max-width:720px}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px}
+.stat b{display:block;font-size:32px;letter-spacing:-.5px;color:var(--ac)}
+.stat span{color:var(--mut);font-size:14px}
+.card p{margin:0;color:var(--mut)}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+button{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--card);color:var(--fg);padding:8px 14px;border-radius:9px;cursor:pointer}
+button:hover{border-color:var(--ac)}
+button.on{background:var(--ac);border-color:var(--ac);color:var(--onac)}
+.panel h3{font-size:19px}
+.row{display:grid;grid-template-columns:minmax(120px,250px) 1fr 54px;gap:12px;align-items:center;padding:8px 10px;border-radius:10px;cursor:pointer;font-size:14px}
+.row:hover,.row.sel{background:var(--bg)}
+.track{background:var(--bg);height:12px;border-radius:99px;overflow:hidden}
+.row:hover .track,.row.sel .track{background:var(--line)}
+.fill{height:100%;background:var(--ac);border-radius:99px;transition:width .45s}
+.row b{text-align:right}
+.note{margin-top:12px;padding:12px 14px;border-radius:10px;background:var(--bg);color:var(--mut);font-size:14px}
+.two{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));margin-top:14px}
+.cm{display:grid;grid-template-columns:auto 1fr 1fr;gap:6px;font-size:14px;text-align:center}
+.cm div{padding:20px 6px;border-radius:10px}
+.cm .h{padding:6px;color:var(--mut);font-size:12px}
+.cm .c{color:var(--fg);font-weight:600;font-size:18px;cursor:default}
+.cm .c small{display:block;font-weight:400;font-size:12px;color:var(--mut)}
+.legend{display:flex;gap:16px;font-size:13px;color:var(--mut);margin-top:10px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}
+.demo{display:grid;grid-template-columns:minmax(260px,340px) 1fr;gap:26px}
+@media(max-width:780px){.demo{grid-template-columns:1fr}.row{grid-template-columns:1fr 54px}.row .track{grid-column:1/3;order:3}}
+label{display:block;font-size:14px;margin-bottom:16px;color:var(--mut)}
+label output{float:right;color:var(--fg);font-weight:600}
+input[type=range]{width:100%;accent-color:var(--ac)}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+details{margin-top:16px;font-size:14px;color:var(--mut)}
+summary{cursor:pointer}
+textarea{width:100%;height:80px;margin:10px 0;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg);padding:10px;font:13px ui-monospace,Consolas,monospace}
+svg#tach{width:100%;height:150px;background:var(--bg);border-radius:10px}
+.meter{height:14px;border-radius:99px;background:var(--bg);overflow:hidden;margin:6px 0 10px}
+.meter div{height:100%;width:0;background:linear-gradient(90deg,var(--ok),var(--bad));transition:width .35s}
+.res{display:flex;align-items:baseline;justify-content:space-between;margin-top:16px}
+#lab{font-size:20px;font-weight:700}
+#pct{font-size:28px;font-weight:700}
+table{width:100%;border-collapse:collapse;margin-top:14px;font-size:14px}
+td{padding:7px 4px;border-top:1px solid var(--line)}
+td:last-child{text-align:right;font-weight:600}
+.warn{font-size:13px;color:var(--mut);margin-top:12px}
+ul{margin:8px 0 0;padding-left:20px;color:var(--mut)}
+li{margin-bottom:6px}
+footer{margin:56px 0 40px;color:var(--mut);font-size:13px;border-top:1px solid var(--line);padding-top:18px}
+h2:before{content:"";display:inline-block;width:6px;height:22px;border-radius:3px;background:var(--ac);margin-right:10px;vertical-align:-3px}
+.card{box-shadow:0 1px 2px rgba(20,30,70,.05);transition:transform .2s,box-shadow .2s,border-color .2s}
+.grid .card:hover{transform:translateY(-3px);box-shadow:var(--sh);border-color:var(--ac)}
+button{transition:background .15s,border-color .15s,transform .1s}
+button:active{transform:scale(.97)}
+button:disabled{opacity:.4;cursor:default}
+button.on{box-shadow:0 4px 12px rgba(67,56,202,.28)}
+nav button{padding:5px 11px;margin-left:6px}
+nav a{transition:background .15s,color .15s}
+nav a.act{color:var(--ac);background:var(--bg);font-weight:600}
+.ecg{display:block;width:100%;max-width:720px;height:auto;margin:6px 0 26px}
+.ecg path{fill:none;stroke:var(--ac);stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;animation:tr 6s ease-in-out infinite}
+@keyframes tr{0%{stroke-dashoffset:1}70%,100%{stroke-dashoffset:0}}
+.rv{opacity:0}.rv.in{opacity:1;animation:up .6s ease backwards}
+@keyframes up{from{opacity:0;transform:translateY(16px)}}
+.rv:not(.in) .fill{width:0!important}
+#sp{position:fixed;top:env(safe-area-inset-top,0px);left:0;height:3px;width:0;background:var(--ac);z-index:12}
+.prog{height:4px;background:var(--bg);border-radius:9px;margin:2px 0 16px;overflow:hidden}.prog i{display:block;height:100%;background:var(--ac);border-radius:9px}
+.mv{display:flex;gap:8px;margin-top:16px}
+.code{margin:16px 0 0;padding:14px 16px;border-radius:10px;background:var(--bg);border:1px solid var(--line);overflow-x:auto;font:13px/1.6 ui-monospace,Consolas,"SF Mono",monospace;color:var(--fg);white-space:pre}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.rv{opacity:1}.ecg path{stroke-dashoffset:0}}
+</style></head><body>
+<div id="sp"></div><nav><b>Apnea Detection</b><a href="#overview">Overview</a><a href="#data">Data</a><a href="#method">Method</a><a href="#results">Results</a><a href="#demo">Try it</a><a href="#limits">Limits</a><button id="tg" aria-label="Toggle light and dark theme">◐</button></nav>
+<div class="wrap">
+<header class="hero">
+<p class="eyebrow">Machine learning for sleep health</p>
+<h1>Detecting sleep apnea from a single ECG lead</h1>
+<p class="lead">Heart-rate variability and ECG-derived respiration, classified minute by minute, and tested only on recordings the model has never seen.</p>
+<svg class="ecg" viewBox="0 0 600 56" aria-hidden="true"><path pathLength="1" d="M0 32h40l5-6 5 6h12l4 4 6-34 6 44 4-14h14l8-9 10 9h30h40l5-6 5 6h12l4 4 6-34 6 44 4-14h14l8-9 10 9h30h40l5-6 5 6h12l4 4 6-34 6 44 4-14h14l8-9 10 9h30h40l5-6 5 6h12l4 4 6-34 6 44 4-14h14l8-9 10 9h30h24"/></svg>
+<div class="grid">
+<div class="card stat"><b>79.0%</b><span>Accuracy</span></div>
+<div class="card stat"><b>0.857</b><span>AUC</span></div>
+<div class="card stat"><b>70.0%</b><span>Sensitivity</span></div>
+<div class="card stat"><b>84.6%</b><span>Specificity</span></div></div>
+</header>
+
+<section id="overview"><h2>The problem</h2>
+<p class="sub">Obstructive sleep apnea repeatedly interrupts breathing during sleep, yet many people are never diagnosed because overnight polysomnography is costly and needs a sleep lab. A single ECG lead is cheap and easy to record, so the question is how much apnea information it carries.</p>
+<div class="grid">
+<div class="card"><h3>Goal</h3><p>Label every minute of an overnight ECG as apnea or normal.</p></div>
+<div class="card"><h3>Key idea</h3><p>Apnea produces slow, cyclic swings in heart rate and in breathing-related ECG amplitude.</p></div>
+<div class="card"><h3>Standard</h3><p>Every score comes from recordings held out of training.</p></div></div></section>
+
+<section id="data"><h2>The data</h2>
+<p class="sub">A public PhysioNet database of overnight single-lead ECG with an expert apnea label for each minute.</p>
+<div class="grid">
+<div class="card stat"><b>35</b><span>labelled recordings</span></div>
+<div class="card stat"><b>16,999</b><span>one-minute segments</span></div>
+<div class="card stat"><b>100 Hz</b><span>sampling rate</span></div>
+<div class="card stat"><b>38.3%</b><span>minutes with apnea</span></div></div></section>
+
+<section id="method"><h2>The method</h2>
+<p class="sub">Select a stage to see what happens.</p>
+<div class="tabs" id="tabs"></div>
+<div class="card panel" id="panel"></div></section>
+
+<section id="results"><h2>The results</h2>
+<p class="sub">Each improvement was added one at a time. Select a row for details.</p>
+<div class="card">
+<div class="tabs"><button id="mA" class="on">Accuracy</button><button id="mU">AUC</button></div>
+<div id="abl"></div><div class="note" id="ablNote"></div>
+<p class="warn">Bars start at 0.60 so differences are visible. Scores are from 5-fold cross-validation grouped by recording.</p></div>
+<div class="two">
+<div class="card"><h3>Confusion matrix (final model)</h3>
+<div class="tabs" style="margin:8px 0 12px"><button id="cC" class="on">Counts</button><button id="cP">Percent of true class</button></div>
+<div class="cm" id="cm"></div><div class="note" id="cmNote">Hover or tap a cell to see what it means.</div></div>
+<div class="card"><h3>Most influential features</h3>
+<div id="feat"></div>
+<div class="legend"><span><i style="background:var(--ac)"></i>Heart-rate variability</span><span><i style="background:var(--ac2)"></i>ECG-derived respiration</span></div></div></div></section>
+
+<section id="demo"><h2>Try the classifier</h2>
+<p class="sub">Shape a five-minute heartbeat series, or paste your own intervals. The page measures its variability and scores it for an apnea-like pattern.</p>
+<div class="card demo">
+<div>
+<label>Cyclic heart-rate variation<output id="oa"></output><input type="range" id="amp" min="0" max="100" value="0"></label>
+<label>Mean heart rate<output id="ob"></output><input type="range" id="bpm" min="50" max="100" value="68"></label>
+<div class="btns"><button id="pN">Normal</button><button id="pA">Apnea-like</button><button id="pR">New noise</button></div>
+<details><summary>Paste your own RR intervals</summary>
+<textarea id="box" placeholder="0.82, 0.85, 0.79 … (seconds or milliseconds, at least 60 values)"></textarea>
+<div class="btns"><button id="goP">Analyse</button><button id="clrP">Back to simulator</button></div></details>
+</div>
+<div>
+<svg id="tach" viewBox="0 0 600 150" preserveAspectRatio="none"></svg>
+<div class="res"><span id="lab"></span><span id="pct"></span></div>
+<div class="meter"><div id="fill"></div></div>
+<table id="ft"></table>
+<p class="warn">Illustrative scorer built from the two strongest features (slow-frequency power and the spread of beat intervals). It is not the full trained ensemble, and it is not a medical tool.</p>
+</div></div>
+<div class="card" id="srv" style="margin-top:14px"><h3>Trained model on a real recording</h3>
+<p class="sub" style="margin-bottom:12px">Pick an overnight recording. The deployed backend runs the full XGBoost + Random Forest ensemble on it and returns a probability for every minute, shown against the true labels.</p>
+<div class="btns" id="sbtn"></div>
+<svg id="tl" viewBox="0 0 600 130" preserveAspectRatio="none" style="width:100%;height:130px;margin-top:12px"></svg>
+<div id="sres" style="color:var(--mut);font-size:14px;margin-top:8px"></div>
+<p class="warn">Shaded amber = minutes labelled apnea by clinicians. Line = model probability (dashed = 0.5 threshold). These recordings were part of the training data, so this shows the pipeline running, not held-out accuracy.</p></div>
+</section>
+
+<section id="limits"><h2>Limitations</h2>
+<div class="card"><ul>
+<li>Offline analysis: neighbouring minutes, smoothing and per-recording normalisation need the whole night, so this is not real-time detection.</li>
+<li>Only 35 recordings and no external validation set.</li>
+<li>Not directly comparable with studies that use the fixed train and test split, which is a less strict setup.</li>
+<li>Sensitivity is 70%, so about 30% of apnea minutes are missed. Screening support, not diagnosis.</li></ul></div></section>
+<footer>Data: public PhysioNet sleep apnea ECG database. All reported scores use cross-validation grouped by recording.</footer>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+/* Method stages */
+const steps=[["Data","Overnight single-lead ECG at 100 Hz with one apnea label per minute: 35 recordings, 16,999 minutes.",`wfdb.dl_files("apnea-ecg", DATA_DIR, files)      # signal, header, labels, R-peaks
+r_times = wfdb.rdann(path, "qrs").sample / FS    # beat times in seconds
+labels = [1 if s == "A" else 0 for s in wfdb.rdann(path, "apn").symbol]`],
+["Preprocess","Annotated R-peaks become beat-to-beat (RR) intervals. Implausible beats outside 0.3–2.0 s are dropped, and a five-minute window is centred on every minute.",`rr = np.diff(r_times)
+keep = (rr > 0.3) & (rr < 2.0)                      # drop implausible beats
+lo, hi = np.searchsorted(r_times, [(m - 2) * 60, (m + 3) * 60])   # 5-minute window`],
+["Features","Time-domain variability, Poincaré shape, very-low, low and high-frequency power, and breathing information taken from R-peak amplitude. Each feature is standardised within its own recording, and neighbouring minutes add context.",`sd1 = np.std(d) / np.sqrt(2)                        # Poincare SD1
+fr, p = welch(rr_interp, fs=4, nperseg=1024)        # spectrum of the beat series
+vlf = p[(fr >= 0.01) & (fr < 0.04)].sum() * df      # slow cycles
+amp = np.abs(win - np.median(sig)).max(axis=1)      # R-peak amplitude (breathing)
+df = zscore_per_record(df, feats)                   # remove personal baseline
+df = add_context(df, z_feats)                       # minutes t-2 to t+2`],
+["Models","XGBoost and Random Forest with fixed, regularised settings. Their probabilities are averaged, then smoothed over five minutes.",`XGBClassifier(n_estimators=400, max_depth=3, learning_rate=0.03,
+              subsample=0.8, colsample_bytree=0.7, min_child_weight=5, reg_lambda=5)
+RandomForestClassifier(n_estimators=500, min_samples_leaf=10,
+                       class_weight="balanced_subsample")
+prob = smooth(df, (p_xgb + p_rf) / 2)               # average, then 5-minute smoothing`],
+["Evaluation","Five-fold cross-validation grouped by recording, so no person appears in both training and test data. Metrics: accuracy, sensitivity, specificity, F1 and AUC.",`for tr, te in GroupKFold(n_splits=5).split(X, y, groups=df["record"]):
+    model.fit(X[tr], y[tr])
+    prob[te] = model.predict_proba(X[te])[:, 1]     # no recording is in both sets`]];
+let si=0;
+function steps_(){$("#tabs").innerHTML=steps.map((s,i)=>`<button class="${i==si?"on":""}" data-i="${i}">${i+1}. ${s[0]}</button>`).join("");
+$("#panel").innerHTML=`<div class="prog"><i style="width:${(si+1)/steps.length*100}%"></i></div><h3>Stage ${si+1} of ${steps.length}: ${steps[si][0]}</h3><p>${steps[si][1]}</p><div class="mv"><button data-d="-1" ${si?"":"disabled"}>← Back</button><button data-d="1" ${si<steps.length-1?"":"disabled"}>Next →</button></div><pre class="code"><code id="cd"></code></pre>`;$("#cd").textContent=steps[si][2]}
+$("#tabs").onclick=e=>{const b=e.target.closest("button");if(b){si=+b.dataset.i;steps_()}};steps_();
+$("#panel").onclick=e=>{const b=e.target.closest("button");if(b&&!b.disabled){si=Math.max(0,Math.min(steps.length-1,si+ +b.dataset.d));steps_()}};
+/* Ablation */
+const ab=[["Baseline: basic variability features",.697,.769,"The starting point: heart-rate variability features with XGBoost."],
+["Time-domain features only",.686,.711,"Beat-interval statistics alone are a weak signal."],
+["+ Poincaré and spectral power",.722,.769,"Adding very-low-frequency power captures the slow cycles that apnea creates."],
+["+ Per-recording normalisation",.730,.793,"Removing each person’s baseline raised sensitivity the most."],
+["+ Neighbouring-minute context",.762,.826,"Apnea comes in multi-minute episodes, so nearby minutes help."],
+["+ Prediction smoothing",.775,.838,"Smoothing probabilities over five minutes removes isolated flips."],
+["+ ECG-derived respiration",.785,.852,"Breathing information from the raw ECG gave the clearest single gain."],
+["Final: XGBoost + Random Forest",.790,.857,"Averaging two model types gave the best overall score. Rolling-mean features were also tested and added no gain."]];
+let met=1,sel=ab.length-1;
+function abl(){const bx=$("#abl");if(!bx.children.length)bx.innerHTML=ab.map((r,i)=>`<div class="row" data-i="${i}"><span>${r[0]}</span><div class="track"><div class="fill"></div></div><b></b></div>`).join("");
+[...bx.children].forEach((el,i)=>{el.classList.toggle("sel",i==sel);el.querySelector(".fill").style.width=(ab[i][met]-.6)/.3*100+"%";el.querySelector("b").textContent=ab[i][met].toFixed(3)});
+const r=ab[sel],pv=sel>1?ab[sel-1]:null;$("#ablNote").innerHTML=`<b>${r[0]}</b> · accuracy ${r[1].toFixed(3)}, AUC ${r[2].toFixed(3)}${pv?` · <b>${r[1]>=pv[1]?"+":""}${((r[1]-pv[1])*100).toFixed(1)} pts</b> accuracy vs previous step`:""}<br>${r[3]}`;
+$("#mA").className=met==1?"on":"";$("#mU").className=met==2?"on":""}
+$("#abl").onclick=e=>{const r=e.target.closest(".row");if(r){sel=+r.dataset.i;abl()}};
+$("#mA").onclick=()=>{met=1;abl()};$("#mU").onclick=()=>{met=2;abl()};abl();
+/* Confusion matrix */
+const cm=[[8873,1612],[1952,4562]];let pc=false;
+function cmx(){const h=(t)=>`<div class="h">${t}</div>`;let o=h("")+h("Predicted normal")+h("Predicted apnea");
+cm.forEach((row,i)=>{const tot=row[0]+row[1];o+=`<div class="h" style="writing-mode:vertical-rl;transform:rotate(180deg)">${i?"Actual apnea":"Actual normal"}</div>`;
+row.forEach((v,j)=>{const p=v/tot,ok=i==j;o+=`<div class="c" data-i="${i}" data-j="${j}" style="background:color-mix(in srgb,var(${ok?"--ac":"--bad"}) ${Math.round(p*(ok?55:60))}%,transparent)">${pc?(p*100).toFixed(1)+"%":v.toLocaleString()}<small>${pc?v.toLocaleString():(p*100).toFixed(1)+"%"}</small></div>`})});
+$("#cm").innerHTML=o;$("#cC").className=pc?"":"on";$("#cP").className=pc?"on":""}
+$("#cC").onclick=()=>{pc=false;cmx()};$("#cP").onclick=()=>{pc=true;cmx()};cmx();
+const cmT=[["Correct: normal minutes recognised as normal (true negatives).","False alarm: normal minutes flagged as apnea (false positives)."],["Missed: apnea minutes flagged as normal (false negatives).","Correct: apnea minutes detected (true positives)."]];
+const cmn=e=>{const c=e.target.closest(".c");if(c)$("#cmNote").textContent=cmT[c.dataset.i][c.dataset.j]};
+$("#cm").onmouseover=cmn;$("#cm").onclick=cmn;
+/* Features */
+const ft=[["Slow-frequency power (VLF)",.594,0],["Beat-interval spread (IQR)",.547,0],["Breathing-signal VLF share",.379,1],["VLF share of power",.312,0],["Breathing-signal variation",.303,1],["Share of beat changes > 20 ms",.25,0],["Beat-interval range",.183,0],["Mean beat interval",.18,0],["Beat-to-beat change (RMSSD)",.177,0],["Breathing-signal slow power",.163,1],["Breathing-signal peak frequency",.154,1],["Low-frequency power (LF)",.147,0]];
+$("#feat").innerHTML=ft.map(f=>`<div class="row" style="grid-template-columns:minmax(120px,190px) 1fr 44px;cursor:default;padding:5px 0"><span>${f[0]}</span><div class="track"><div class="fill" style="width:${f[1]/.6*100}%;background:var(${f[2]?"--ac2":"--ac"})"></div></div><b>${f[1].toFixed(2)}</b></div>`).join("");
+/* Demo */
+function rng(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function gen(bpm,a,seed){const r=rng(seed),g=()=>Math.sqrt(-2*Math.log(r()+1e-12))*Math.cos(2*Math.PI*r());let t=0,x=[];
+while(t<300){const v=Math.min(2,Math.max(.3,60/bpm+a*Math.sin(2*Math.PI*.025*t)+.03*Math.sin(2*Math.PI*.25*t)+.02*g()));x.push(v);t+=v}return x}
+function feats(x){const rr=x.filter(v=>v>.3&&v<2),n=rr.length;if(n<60)return null;
+const m=rr.reduce((a,b)=>a+b)/n,sd=Math.sqrt(rr.reduce((a,b)=>a+(b-m)**2,0)/n),d=rr.slice(1).map((v,i)=>v-rr[i]);
+const rm=Math.sqrt(d.reduce((a,b)=>a+b*b,0)/d.length),p20=d.filter(v=>Math.abs(v)>.02).length/d.length;
+const s=[...rr].sort((a,b)=>a-b),q=p=>s[Math.floor(p*(n-1))],iqr=q(.75)-q(.25);
+const t=[];let c=0;rr.forEach(v=>{c+=v;t.push(c)});
+const fs=4,N=Math.floor((t[n-1]-t[0])*fs),y=[];let j=0;
+for(let k=0;k<N;k++){const tk=t[0]+k/fs;while(j<n-2&&t[j+1]<tk)j++;const u=Math.min(1,Math.max(0,(tk-t[j])/(t[j+1]-t[j])));y.push(rr[j]+(rr[j+1]-rr[j])*u)}
+const ym=y.reduce((a,b)=>a+b)/N;let vlf=0,tot=0;
+for(let f=.01;f<=.4;f+=.005){let re=0,im=0;const w=2*Math.PI*f/fs;for(let k=0;k<N;k++){const v=y[k]-ym;re+=v*Math.cos(w*k);im+=v*Math.sin(w*k)}const pw=re*re+im*im;tot+=pw;if(f<.04)vlf+=pw}
+return{m,sd,rm,p20,iqr,vr:vlf/tot}}
+let seed=7,custom=null;
+function draw(x){const W=600,H=150,n=Math.min(x.length,400),mn=Math.min(...x),mx=Math.max(...x),p=(mx-mn||.1)*.15,rg=mx-mn+2*p;
+$("#tach").innerHTML=`<polyline fill="none" stroke="var(--ac)" stroke-width="1.6" vector-effect="non-scaling-stroke" points="${x.slice(0,n).map((v,i)=>(i/(n-1)*W).toFixed(1)+","+(H-(v-mn+p)/rg*H).toFixed(1)).join(" ")}"/>`}
+function run(){const a=+$("#amp").value,b=+$("#bpm").value;$("#oa").textContent=a+"%";$("#ob").textContent=b+" bpm";
+const x=custom||gen(b,a/100*.09,seed),f=feats(x);
+if(!f){$("#lab").textContent="Need at least 60 intervals";$("#lab").style.color="var(--mut)";$("#pct").textContent="";$("#fill").style.width="0";$("#ft").innerHTML="";return}
+draw(x);const z=7*(f.vr-.35)+25*(f.iqr-.07),p=1/(1+Math.exp(-z)),hit=p>=.5;
+$("#fill").style.width=p*100+"%";$("#pct").textContent=Math.round(p*100)+"%";
+$("#lab").textContent=hit?"Apnea-like pattern":"Normal pattern";$("#lab").style.color=hit?"var(--bad)":"var(--ok)";
+$("#ft").innerHTML=[["Mean beat interval",f.m.toFixed(2)+" s"],["SDNN",(f.sd*1e3).toFixed(0)+" ms"],["RMSSD",(f.rm*1e3).toFixed(0)+" ms"],["Beat changes > 20 ms",(f.p20*100).toFixed(0)+"%"],["Beat-interval IQR",(f.iqr*1e3).toFixed(0)+" ms"],["Slow-frequency (VLF) share",(f.vr*100).toFixed(0)+"%"]].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join("")}
+function parse(s){const a=(s.match(/\d+\.?\d*/g)||[]).map(Number);if(!a.length)return[];const md=a.slice().sort((x,y)=>x-y)[a.length>>1];return md>10?a.map(v=>v/1000):a}
+["amp","bpm"].forEach(i=>$("#"+i).oninput=()=>{custom=null;run()});
+$("#pN").onclick=()=>{$("#amp").value=0;custom=null;run()};
+$("#pA").onclick=()=>{$("#amp").value=75;custom=null;run()};
+$("#pR").onclick=()=>{seed=Math.random()*1e6|0;custom=null;run()};
+$("#goP").onclick=()=>{custom=parse($("#box").value);run()};
+$("#clrP").onclick=()=>{custom=null;run()};
+$("#tg").onclick=()=>{const d=document.documentElement,cur=d.dataset.theme||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");d.dataset.theme=cur=="dark"?"light":"dark"};
+const cnt=el=>{const m=el.textContent.match(/^([\d,.]+)(.*)$/);if(!m)return;const to=parseFloat(m[1].replace(/,/g,"")),dec=(m[1].split(".")[1]||"").length,t0=performance.now();const tick=t=>{const k=Math.min(1,(t-t0)/1100),v=to*(1-Math.pow(1-k,3));el.textContent=v.toLocaleString("en-US",{minimumFractionDigits:dec,maximumFractionDigits:dec})+m[2];if(k<1)requestAnimationFrame(tick)};requestAnimationFrame(tick)};
+const revs=document.querySelectorAll(".card,h2,.sub");
+if("IntersectionObserver" in window){
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add("in");if(e.target.matches(".stat"))cnt(e.target.querySelector("b"));io.unobserve(e.target)}}));
+revs.forEach(el=>{el.classList.add("rv");io.observe(el)});
+const links=[...document.querySelectorAll("nav a")];
+const so=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)links.forEach(a=>a.classList.toggle("act",a.getAttribute("href")=="#"+e.target.id))}),{rootMargin:"-45% 0px -50% 0px"});
+document.querySelectorAll("section").forEach(s=>so.observe(s))}
+addEventListener("scroll",()=>{const h=document.documentElement;$("#sp").style.width=scrollY/Math.max(1,h.scrollHeight-innerHeight)*100+"%"},{passive:true});
+run();
+
+/* Trained model backend */
+(async()=>{const bx=$("#sbtn"),out=$("#sres");
+let list;try{const r=await fetch("/api/samples");if(!r.ok)throw 0;list=await r.json();if(!list.length)throw 0}catch(e){bx.innerHTML="";out.textContent="The model backend is not reachable from this page. It is available on the deployed site.";return}
+bx.innerHTML=list.map(s=>`<button data-id="${s.id}">${s.id} · ${s.minutes} min</button>`).join("");
+const col=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function plot(d){const W=600,H=130,n=d.minutes[d.minutes.length-1]+1,x=m=>m/n*W,y=p=>H-6-p*(H-12);let o="";
+d.minutes.forEach((m,i)=>{if(d.truth[i])o+=`<rect x="${x(m)}" y="0" width="${Math.max(W/n,1)}" height="${H}" fill="${col("--ac2")}" opacity=".28"/>`});
+o+=`<line x1="0" x2="${W}" y1="${y(.5)}" y2="${y(.5)}" stroke="${col("--mut")}" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>`;
+o+=`<polyline fill="none" stroke="${col("--ac")}" stroke-width="2" vector-effect="non-scaling-stroke" points="${d.minutes.map((m,i)=>x(m)+","+y(d.prob[i])).join(" ")}"/>`;$("#tl").innerHTML=o}
+bx.onclick=async e=>{const b=e.target.closest("button");if(!b)return;[...bx.children].forEach(c=>c.classList.toggle("on",c===b));out.textContent="Running the model…";
+try{const r=await fetch("/api/analyze/sample/"+b.dataset.id);if(!r.ok)throw 0;const d=await r.json();plot(d);
+out.textContent=`${d.model}. Flagged ${d.flagged_minutes} of ${d.n_minutes} minutes (${d.flagged_pct}%). Accuracy ${(d.accuracy*100).toFixed(1)}%, sensitivity ${(d.sensitivity*100).toFixed(1)}%, specificity ${(d.specificity*100).toFixed(1)}%.`}catch(_){out.textContent="The model did not respond."}};
+bx.firstElementChild.click()})();
+</script></body></html>
