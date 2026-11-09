@@ -148,13 +148,14 @@ nav a.act{color:var(--ac);background:var(--bg);font-weight:600}
 <label>Mean heart rate<output id="ob"></output><input type="range" id="bpm" min="50" max="100" value="68"></label>
 <div class="btns"><button id="pN">Normal</button><button id="pA">Apnea-like</button><button id="pR">New noise</button></div>
 <details><summary>Paste your own RR intervals</summary>
-<textarea id="box" placeholder="0.82, 0.85, 0.79 … (seconds or milliseconds, at least 60 values)"></textarea>
+<textarea id="box" placeholder="0.82, 0.85, 0.79 … (seconds or milliseconds, at least 60 values, about 5 minutes works best)"></textarea>
 <div class="btns"><button id="goP">Analyse</button><button id="clrP">Back to simulator</button></div></details>
 </div>
 <div>
 <svg id="tach" viewBox="0 0 600 150" preserveAspectRatio="none"></svg>
 <div class="res"><span id="lab"></span><span id="pct"></span></div>
 <div class="meter"><div id="fill"></div></div>
+<div class="note" id="conf" style="display:none"></div>
 <table id="ft"></table>
 <p class="warn">Illustrative scorer built from the two strongest features (slow-frequency power and the spread of beat intervals). It is not the full trained ensemble, and it is not a medical tool.</p>
 </div></div>
@@ -244,14 +245,14 @@ const fs=4,N=Math.floor((t[n-1]-t[0])*fs),y=[];let j=0;
 for(let k=0;k<N;k++){const tk=t[0]+k/fs;while(j<n-2&&t[j+1]<tk)j++;const u=Math.min(1,Math.max(0,(tk-t[j])/(t[j+1]-t[j])));y.push(rr[j]+(rr[j+1]-rr[j])*u)}
 const ym=y.reduce((a,b)=>a+b)/N;let vlf=0,tot=0;
 for(let f=.01;f<=.4;f+=.005){let re=0,im=0;const w=2*Math.PI*f/fs;for(let k=0;k<N;k++){const v=y[k]-ym;re+=v*Math.cos(w*k);im+=v*Math.sin(w*k)}const pw=re*re+im*im;tot+=pw;if(f<.04)vlf+=pw}
-return{m,sd,rm,p20,iqr,vr:vlf/tot}}
+return{n,m,sd,rm,p20,iqr,vr:vlf/tot}}
 let seed=7,custom=null;
 function draw(x){const W=600,H=150,n=Math.min(x.length,400),mn=Math.min(...x),mx=Math.max(...x),p=(mx-mn||.1)*.15,rg=mx-mn+2*p;
 $("#tach").innerHTML=`<polyline fill="none" stroke="var(--ac)" stroke-width="1.6" vector-effect="non-scaling-stroke" points="${x.slice(0,n).map((v,i)=>(i/(n-1)*W).toFixed(1)+","+(H-(v-mn+p)/rg*H).toFixed(1)).join(" ")}"/>`}
 function run(){const a=+$("#amp").value,b=+$("#bpm").value;$("#oa").textContent=a+"%";$("#ob").textContent=b+" bpm";
 const x=custom||gen(b,a/100*.09,seed),f=feats(x);
-if(!f){$("#lab").textContent="Need at least 60 intervals";$("#lab").style.color="var(--mut)";$("#pct").textContent="";$("#fill").style.width="0";$("#ft").innerHTML="";return}
-draw(x);const z=7*(f.vr-.35)+25*(f.iqr-.07),p=1/(1+Math.exp(-z)),hit=p>=.5;
+if(!f){$("#conf").style.display="none";$("#lab").textContent="Need at least 60 intervals (about one minute)";$("#lab").style.color="var(--mut)";$("#pct").textContent="";$("#fill").style.width="0";$("#ft").innerHTML="";return}
+draw(x);{const secs=Math.round(f.m*f.n),c=$("#conf"),low=secs<240;c.style.display=low?"block":"none";c.textContent=`Low confidence: ${f.n} intervals is only about ${secs} s of data. The model learned from 5-minute windows (about 300 s), so short inputs give less reliable scores.`;$("#pct").style.opacity=low?.6:1}const z=7*(f.vr-.35)+25*(f.iqr-.07),p=1/(1+Math.exp(-z)),hit=p>=.5;
 $("#fill").style.width=p*100+"%";$("#pct").textContent=Math.round(p*100)+"%";
 $("#lab").textContent=hit?"Apnea-like pattern":"Normal pattern";$("#lab").style.color=hit?"var(--bad)":"var(--ok)";
 $("#ft").innerHTML=[["Mean beat interval",f.m.toFixed(2)+" s"],["SDNN",(f.sd*1e3).toFixed(0)+" ms"],["RMSSD",(f.rm*1e3).toFixed(0)+" ms"],["Beat changes > 20 ms",(f.p20*100).toFixed(0)+"%"],["Beat-interval IQR",(f.iqr*1e3).toFixed(0)+" ms"],["Slow-frequency (VLF) share",(f.vr*100).toFixed(0)+"%"]].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join("")}
